@@ -8,15 +8,17 @@ import nltk
 import sklearn
 from sklearn.naive_bayes import MultinomialNB
 import numpy as np
-import pylab as pl
+# import pylab as pl
+import matplotlib
+matplotlib.use('Agg')  # 使用非交互式后端
 import matplotlib.pyplot as plt
 
 
 def MakeWordsSet(words_file):
     words_set = set()
-    with open(words_file, 'r') as fp:
+    with open(words_file, 'r', encoding='utf-8') as fp:
         for line in fp.readlines():
-            word = line.strip().decode("utf-8")
+            word = line.strip()
             if len(word)>0 and word not in words_set: # 去重
                 words_set.add(word)
     return words_set
@@ -35,7 +37,7 @@ def TextProcessing(folder_path, test_size=0.2):
         for file in files:
             if j > 100: # 每类text样本数最多100
                 break
-            with open(os.path.join(new_folder_path, file), 'r') as fp:
+            with open(os.path.join(new_folder_path, file), 'r', encoding='utf-8') as fp:
                raw = fp.read()
             # print raw
             ## --------------------------------------------------------------------------------
@@ -47,12 +49,12 @@ def TextProcessing(folder_path, test_size=0.2):
             # print word_list
             ## --------------------------------------------------------------------------------
             data_list.append(word_list)
-            class_list.append(folder.decode('utf-8'))
+            class_list.append(folder)
             j += 1
 
     ## 划分训练集和测试集
     # train_data_list, test_data_list, train_class_list, test_class_list = sklearn.cross_validation.train_test_split(data_list, class_list, test_size=test_size)
-    data_class_list = zip(data_list, class_list)
+    data_class_list = list(zip(data_list, class_list))
     random.shuffle(data_class_list)
     index = int(len(data_class_list)*test_size)+1
     train_list = data_class_list[index:]
@@ -64,13 +66,13 @@ def TextProcessing(folder_path, test_size=0.2):
     all_words_dict = {}
     for word_list in train_data_list:
         for word in word_list:
-            if all_words_dict.has_key(word):
+            if word in all_words_dict:
                 all_words_dict[word] += 1
             else:
                 all_words_dict[word] = 1
     # key函数利用词频进行降序排序
     all_words_tuple_list = sorted(all_words_dict.items(), key=lambda f:f[1], reverse=True) # 内建函数sorted参数需为list
-    all_words_list = list(zip(*all_words_tuple_list)[0])
+    all_words_list = list(zip(*all_words_tuple_list))[0]
 
     return all_words_list, train_data_list, test_data_list, train_class_list, test_class_list
 
@@ -135,7 +137,7 @@ def TextClassifier(train_feature_list, test_feature_list, train_class_list, test
 
 if __name__ == '__main__':
 
-    print "start"
+    print("start")
 
     ## 文本预处理
     folder_path = './Database/SogouC/Sample'
@@ -156,7 +158,7 @@ if __name__ == '__main__':
         train_feature_list, test_feature_list = TextFeatures(train_data_list, test_data_list, feature_words, flag)
         test_accuracy = TextClassifier(train_feature_list, test_feature_list, train_class_list, test_class_list, flag)
         test_accuracy_list.append(test_accuracy)
-    print test_accuracy_list
+    print(test_accuracy_list)
 
     # 结果评价
     plt.figure()
@@ -166,4 +168,4 @@ if __name__ == '__main__':
     plt.ylabel('test_accuracy')
     plt.savefig('result.png')
 
-    print "finished"
+    print("finished")
