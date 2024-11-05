@@ -8,10 +8,10 @@ import nltk
 import sklearn
 from sklearn.naive_bayes import MultinomialNB
 import numpy as np
-# import pylab as pl
 import matplotlib
 matplotlib.use('Agg')  # 使用非交互式后端
 import matplotlib.pyplot as plt
+from logger import Logger
 
 
 def MakeWordsSet(words_file):
@@ -132,12 +132,12 @@ def TextClassifier(train_feature_list, test_feature_list, train_class_list, test
         test_accuracy = classifier.score(test_feature_list, test_class_list)
     else:
         test_accuracy = []
-    return test_accuracy
+    return test_accuracy, classifier
 
 
 if __name__ == '__main__':
 
-    print("start")
+    # print("start")
 
     ## 文本预处理
     folder_path = './Database/SogouC/Sample'
@@ -147,18 +147,37 @@ if __name__ == '__main__':
     stopwords_file = './stopwords_cn.txt'
     stopwords_set = MakeWordsSet(stopwords_file)
 
+    # logger日志初始化
+    log_dir = "./log"
+    if log_dir is not None and not os.path.exists(log_dir):
+        os.mkdir(log_dir)
+    logger = Logger(os.path.join(log_dir, "log.txt"))
+
     ## 文本特征提取和分类
     # flag = 'nltk'
     flag = 'sklearn'
     deleteNs = range(0, 1000, 20)
     test_accuracy_list = []
+    best_deleteN = {"deleteN" : 0, "metrics" : None, "model" : None}
     for deleteN in deleteNs:
         # feature_words = words_dict(all_words_list, deleteN)
         feature_words = words_dict(all_words_list, deleteN, stopwords_set)
         train_feature_list, test_feature_list = TextFeatures(train_data_list, test_data_list, feature_words, flag)
-        test_accuracy = TextClassifier(train_feature_list, test_feature_list, train_class_list, test_class_list, flag)
+        test_accuracy, classifier = TextClassifier(train_feature_list, test_feature_list, train_class_list, test_class_list, flag)
         test_accuracy_list.append(test_accuracy)
-    print(test_accuracy_list)
+
+        # 打印每一轮的日志信息
+        logger.write(f"deleteN {deleteN}, test_accuracy : {test_accuracy:.6f}\n")
+
+        # 更新最优模型的信息
+        if best_deleteN["metrics"] is None or test_accuracy > best_deleteN["metrics"]:
+            best_deleteN["deleteN"] = deleteN
+            best_deleteN["metrics"] = test_accuracy
+            best_deleteN["model"] = classifier
+
+    # print(test_accuracy_list)
+    logger.write("\n\nTesting completed.\n\n")
+    logger.write(f"best deleteN : {best_deleteN['deleteN']}, test_accuracy : {best_deleteN['metrics']:.6f}\n")
 
     # 结果评价
     plt.figure()
@@ -168,4 +187,5 @@ if __name__ == '__main__':
     plt.ylabel('test_accuracy')
     plt.savefig('result.png')
 
-    print("finished")
+    # print("finished")
+    logger.close()
