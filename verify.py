@@ -8,23 +8,28 @@
 	3.根据特征词，构造文档对应的特征向量（类似于NBC.TextFeatures）
 	4.加载已经保存下的训练好的分类器模型，将特征向量输入模型，得到预测标签
 """
+import os
 import re
+import csv
 import jieba
 import joblib
 
-
-def TextProcessing(file_path):
+def TextProcessing(news_path):
 	verify_data_list = []
+	news_title = []
 
-	with open(file_path, "r", encoding='utf-8') as fp:
-		raw = fp.read()
+	for filename in os.listdir(news_path):
+		file_path = os.path.join(news_path, filename)
+		with open(file_path, "r", encoding='utf-8') as fp:
+			raw = fp.read()
 
-	word_cut = jieba.cut(raw, cut_all=False) # 精确模式
-	word_list = list(word_cut) # 转化成list
+		word_cut = jieba.cut(raw, cut_all=False) # 精确模式
+		word_list = list(word_cut) # 转化成list
 
-	verify_data_list.append(word_list)
+		news_title.append(os.path.splitext(filename)[0])
+		verify_data_list.append(word_list)
 
-	return verify_data_list
+	return  news_title, verify_data_list
 
 def get_feature_words(feature_path):
 	with open(feature_path, 'r', encoding='utf-8') as fp:
@@ -66,8 +71,8 @@ if __name__ == '__main__':
 	class_dict = get_class_dict(class_path)
 
 	# 获取验证文档数据
-	verify_data_path = './news/“一个西方关键盟友要倒向俄罗斯”.txt'
-	verify_data_list = TextProcessing(verify_data_path)
+	verify_data_path = './news'
+	news_title, verify_data_list = TextProcessing(verify_data_path)
 
 	# 关键词应该是训练时就确定了的，所以应该在训练时保存feature_words
 	feature_path = './log/feature_words.txt'
@@ -80,4 +85,18 @@ if __name__ == '__main__':
 	model_path = './best_model/multinomial_nb_model.joblib'
 	classifier = joblib.load(model_path)
 	labels = classifier.predict(verify_feature_list)
-	print(f"{labels[0]} {class_dict[labels[0]]}")
+
+	result = [] # 最后预测的信息存放于此
+	for i, title in enumerate(news_title):
+		data = {}
+		data["title"] = title
+		data["code"] = labels[i]
+		data["category"] = class_dict[labels[i]]
+		result.append(data)
+		print(f"{i+1} {title} {labels[i]} {class_dict[labels[i]]}")
+
+	predict_path = './log/predict.csv'
+	with open(predict_path, mode='w', newline='', encoding='utf-8') as fp:
+		writer = csv.DictWriter(fp, fieldnames=['title', 'code', 'category'])
+		writer.writeheader() # 写入表头
+		writer.writerows(result)
