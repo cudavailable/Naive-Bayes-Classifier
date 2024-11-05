@@ -1,6 +1,7 @@
 
 #coding: utf-8
 import os
+import joblib
 import time
 import random
 import jieba
@@ -88,6 +89,7 @@ def words_dict(all_words_list, deleteN, stopwords_set=set()):
         if not all_words_list[t].isdigit() and all_words_list[t] not in stopwords_set and 1<len(all_words_list[t])<5:
             feature_words.append(all_words_list[t])
             n += 1
+
     return feature_words
 
 
@@ -158,7 +160,7 @@ if __name__ == '__main__':
     flag = 'sklearn'
     deleteNs = range(0, 1000, 20)
     test_accuracy_list = []
-    best_deleteN = {"deleteN" : 0, "metrics" : None, "model" : None}
+    best_deleteN = {"deleteN" : 0, "metrics" : None, "model" : None, "feature_words" : None}
     for deleteN in deleteNs:
         # feature_words = words_dict(all_words_list, deleteN)
         feature_words = words_dict(all_words_list, deleteN, stopwords_set)
@@ -174,10 +176,25 @@ if __name__ == '__main__':
             best_deleteN["deleteN"] = deleteN
             best_deleteN["metrics"] = test_accuracy
             best_deleteN["model"] = classifier
+            best_deleteN['feature_words'] = feature_words
 
     # print(test_accuracy_list)
     logger.write("\n\nTesting completed.\n\n")
     logger.write(f"best deleteN : {best_deleteN['deleteN']}, test_accuracy : {best_deleteN['metrics']:.6f}\n")
+
+    # 保存特征词，便于验证时可以从文件中读出直接使用
+    with open(os.path.join(log_dir, "feature_words.txt"), 'w', encoding='utf-8') as fp:
+        for word in best_deleteN['feature_words']:
+            fp.write(word + '\n')
+
+    # 保存最好的模型参数
+    model_dir = './best_model'
+    if model_dir is not None and not os.path.exists(model_dir):
+        os.mkdir(model_dir)
+    model_path = os.path.join(model_dir, 'multinomial_nb_model.joblib')
+    joblib.dump(best_deleteN['model'], model_path)
+    logger.write("\nclassifier with the highest test_accuracy has been successfully saved.\n")
+
 
     # 结果评价
     plt.figure()
